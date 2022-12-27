@@ -44,6 +44,7 @@
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/exact_time.h>
 #include <message_filters/sync_policies/approximate_time.h>
+#include <message_filters/time_synchronizer.h>
 #include <sensor_msgs/image_encodings.h>
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include <sensor_msgs/PointCloud2.h>
@@ -69,8 +70,10 @@ class PointCloudXyzrgbNodelet : public nodelet::Nodelet
   typedef ExactTime<sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::CameraInfo> ExactSyncPolicy;
   typedef message_filters::Synchronizer<SyncPolicy> Synchronizer;
   typedef message_filters::Synchronizer<ExactSyncPolicy> ExactSynchronizer;
+  typedef message_filters::TimeSynchronizer<sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::CameraInfo> TimeSynchronizerPolicy;
   boost::shared_ptr<Synchronizer> sync_;
   boost::shared_ptr<ExactSynchronizer> exact_sync_;
+  boost::shared_ptr<TimeSynchronizerPolicy> seq_sync_;
 
   // Publications
   boost::mutex connect_mutex_;
@@ -117,8 +120,8 @@ void PointCloudXyzrgbNodelet::onInit()
   }
   else
   {
-    sync_.reset( new Synchronizer(SyncPolicy(queue_size), sub_depth_, sub_rgb_, sub_info_) );
-    sync_->registerCallback(boost::bind(&PointCloudXyzrgbNodelet::imageCb, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3));
+    seq_sync_.reset( new TimeSynchronizerPolicy(sub_depth_, sub_rgb_, sub_info_, queue_size));
+    seq_sync_->registerCallback(boost::bind(&PointCloudXyzrgbNodelet::imageCb, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3));
   }
   
   // Monitor whether anyone is subscribed to the output
